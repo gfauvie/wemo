@@ -21,7 +21,7 @@ def get_sunset():
     KEY = ''
 
     # weather underground api call to get san jose's sunrise/sunset schedule
-    url = 'http://api.wunderground.com/api/' + KEY + '/astronomy/q/CA/San_Jose.json'
+    url = 'http://api.wunderground.com/api/'+ KEY + '/astronomy/q/CA/San_Jose.json'
 
     # request the json request from the wunderground api
     request = urllib2.Request(url)
@@ -34,37 +34,37 @@ def get_sunset():
     sunset_min = astro_json['sun_phase']['sunset']['minute']
     sunset_time = [int(sunset_hour), int(sunset_min)]
 
-    return sunset_time
+    return str(sunset_time[0]) + ":" + str(sunset[1])
 
 if __name__ == '__main__':
 
     print "Starting Wemo..."
-    # start the wemo environment
     env = Environment(with_cache=False)
     env.start()
-
-    #search for available devices connected to the network
-    env.discover(15)
+    env.discover(20) # find the switches on the network
     print env.list_switches()
-
-    #assign each switch to a variable
     living = env.get_switch('Living Room')
     outside = env.get_switch('Outside Lights')
-    sunset = [25, 62]
+    sunset = "17:54" # set initial sunset time manually
+    tracker = 0
 
     while True:
         # get the current time
         hour = int(dt.datetime.now().hour)
         minute = int(dt.datetime.now().minute)
         second = int(dt.datetime.now().second)
+        time_now = str(hour) + ":" + str(minute)
 
-        # retrieve the day's sunset time once per day
-        if hour == 12 & minute == 12 & second == 12:
-            sunset = get_sunset()
-            print "Today's Sunset will be at " + str(sunset[0]) + ":" + str(sunset[1])
+        # retreive the current day's sunset time
+        if hour == 12 and minute == 12 & second == 12:
+
+            if tracker == 0:
+                sunset = get_sunset()
+                print "Today's Sunset will be at " + str(sunset[0]) + ":" + str(sunset[1])
+                tracker = 1 # set tracker to 1 so it doesn't pull from the API more than once
 
         # turn the lights on at sunset
-        elif hour >= sunset[0] & minute >= sunset[1]:
+        elif time_now == sunset:
 
             if living.get_state() == 0:
                 living.on()
@@ -74,8 +74,8 @@ if __name__ == '__main__':
                 outside.on()
                 print 'Outside Lights On'
 
-        # turn the lights off at 11pm
-        elif hour == 23:
+        # turn the lights off at midnight
+        elif hour == 00:
 
             if living.get_state() == 1:
                 living.off()
@@ -84,3 +84,6 @@ if __name__ == '__main__':
             if outside.get_state() == 1:
                 outside.off()
                 print 'Outside Lights Off'
+
+            # reset tracker back to 0
+            tracker = 0
